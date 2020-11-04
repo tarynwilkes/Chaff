@@ -5,10 +5,6 @@ date: "04/11/2020"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 <!-- Set some default code chunk options -->
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, 
@@ -21,3 +17,130 @@ knitr::opts_chunk$set(echo = FALSE,
 ```{r packages}
 library(tidyverse)
 ```
+
+# Introduction
+## This is the introduction
+
+# Methods
+## This is the methods
+
+# Results
+
+# Discussion
+
+
+<!-- read in the data  -->
+```{r}
+chaff <- read_table2("data-raw/chaff.txt")
+```
+ <!-- Tidy the data -->
+```{r}
+chaff2 <- gather(data = chaff, key = sex, value = max)
+```
+ 
+<!-- create function too calculate ss(x) -->
+```{r}
+sum_sq <- function(df, measure, group) {
+  summarise(({{measure}} - mean({{measure}}))^2)
+}
+```
+
+<!-- call the function for the chaff data -->
+```{r}
+sum_sq <- function(df, measure, group) {
+  df %>% group_by({{ group }}) %>% 
+    summarise(ss = sum(({{measure}} - mean({{measure}}))^2))
+}
+
+sum_sq(chaff2, max, sex)
+```
+
+<!-- summarising the masses by sex - include the mean, standard deviation, sample size and the standard error -->
+```{r}
+chaff2_summary <- chaff2 %>% 
+  group_by(sex) %>% 
+  summarise(mean_max = mean(max),
+            n          = length(max),
+            std_max  = sd(max),
+            se_max   = std_max/sqrt(n))
+```
+
+```{r}
+data_summary <- function(df, measure, group) {
+  df %>%
+    group_by({{group}}) %>%
+    summarise(mean_max = mean({{measure}}),
+            n          = length({{measure}}),
+            std_max  = sd({{measure}}),
+            se_max   = std_max/sqrt(n))
+}
+```
+
+```{r}
+data_summary(chaff2, max, sex)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Task 2, turn the proteomic data into an Rmd -->
+<!-- Read in the data -->
+
+```{r}
+filesol <- "data-raw/Y101_Y102_Y201_Y202_Y101-5.csv"
+```
+
+<!-- skip first two lines -->
+```{r}
+sol <- read_csv(filesol, skip = 2) %>% 
+  janitor::clean_names()
+```
+
+<!-- filter the data to keep human proteins identified by more than one peptide/delete those where less than two are deleted -->
+```{r}
+sol <- sol %>% 
+  filter(str_detect(description,
+                    "OS=Homo sapiens")) %>% 
+  filter(x1pep == "x")
+```
+
+<!-- extract the gene name from the description and put into a column -->
+```{r}
+sol <- sol %>%
+  mutate(genename =  str_extract(description,"GN=[^\\s]+") %>% 
+           str_replace("GN=", ""))
+```
+
+<!-- extract top protein identifier and put into a column called protid -->
+```{r}
+sol <- sol %>%
+  mutate(protid =  str_extract(accession, ".::[^|;]+") %>% 
+           str_replace(".::", ""))
+```
+
+```{r}
+sol2 <- sol %>% 
+  pivot_longer(names_to = "lineage_rep", 
+               values_to = "abndance",
+               cols = -c(accession, peptide_count, unique_peptides, confidence_score, anova_p, q_value, max_fold_change, power, highest_mean_condition, lowest_mean_condition, mass, description, x1pep, genename, protid))
+```
+
+<!-- create 2 separate columns -->
+```{r}
+sol3 <- sol2 %>% 
+  extract("lineage_rep", 
+          c("lineage", "rep"),
+          "(y[0-9]{3,4})\\_([a-z])")
+```
+
+<!-- click knit to turn it into an Rmd -->
